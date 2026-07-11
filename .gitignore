@@ -1,0 +1,26 @@
+# Dependencias
+node_modules/
+/package-lock.json
+
+# Cobertura de pruebas (Jest)
+coverage/
+*.lcov
+
+# Logs de error y del sistema
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Configuración del editor e IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
