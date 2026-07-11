@@ -1,6 +1,4 @@
 # .github/workflows/ci-playwright.yml
-# Pipeline 2: ejecuta los tests E2E de Playwright en cada Pull Request
-
 name: CI — Tests E2E Playwright
 
 on:
@@ -28,13 +26,17 @@ jobs:
       - name: Instalar navegadores Playwright
         run: npx playwright install --with-deps chromium
 
-      # Restaurar sesión usando printenv para evitar problemas con caracteres especiales
+      # Usar Node.js para escribir el archivo — evita problemas con caracteres especiales en bash
       - name: Restaurar sesión de Spotify
         env:
           SPOTIFY_AUTH_JSON: ${{ secrets.SPOTIFY_AUTH_JSON }}
         run: |
-          mkdir -p E2ETest/auth
-          printenv SPOTIFY_AUTH_JSON > E2ETest/auth/spotify_state.json
+          node -e "
+            const fs = require('fs');
+            fs.mkdirSync('E2ETest/auth', { recursive: true });
+            fs.writeFileSync('E2ETest/auth/spotify_state.json', process.env.SPOTIFY_AUTH_JSON);
+            console.log('Sesión restaurada:', fs.statSync('E2ETest/auth/spotify_state.json').size, 'bytes');
+          "
 
       - name: Ejecutar tests E2E Playlist
         run: npx playwright test --project=playlist
