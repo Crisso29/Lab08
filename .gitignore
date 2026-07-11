@@ -23,3 +23,14 @@ yarn-error.log*
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+E2ETest/auth.json
+E2ETest/.chromium-session/
+E2ETest/auth/spotify_state.json
