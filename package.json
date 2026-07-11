@@ -27,5 +27,15 @@
   },
   "directories": {
     "test": "test"
+  },
+  "jest": {
+    "testMatch": [
+      "**/UnitTest/**/*.test.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/E2ETest/"
+    ]
   }
 }
+
