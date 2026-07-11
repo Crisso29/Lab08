@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       # Paso 3: instalar dependencias (Jest y todo lo del package.json)
       - name: Instalar dependencias
