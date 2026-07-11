@@ -1,0 +1,36 @@
+# .github/workflows/ci-jest.yml
+# Pipeline 1: ejecuta los tests de Jest en cada Push a main
+
+name: CI — Tests Unitarios Jest
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-unitarios:
+    name: Ejecutar suite Jest
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Paso 1: descargar el código del repositorio
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      # Paso 2: instalar Node.js 20
+      - name: Instalar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # Paso 3: instalar dependencias (Jest y todo lo del package.json)
+      - name: Instalar dependencias
+        run: npm install
+
+      # Paso 4: ejecutar todos los tests de Jest
+      - name: Ejecutar tests unitarios
+        run: npm test
