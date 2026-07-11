@@ -1,0 +1,53 @@
+# .github/workflows/ci-playwright.yml
+name: CI — Tests E2E Playwright
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-e2e:
+    name: Ejecutar suite Playwright
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Instalar navegadores Playwright
+        run: npx playwright install --with-deps chromium
+
+      # Usar Node.js para escribir el archivo — evita problemas con caracteres especiales en bash
+      - name: Restaurar sesión de Spotify
+        env:
+          SPOTIFY_AUTH_JSON: ${{ secrets.SPOTIFY_AUTH_JSON }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            fs.mkdirSync('E2ETest/auth', { recursive: true });
+            fs.writeFileSync('E2ETest/auth/spotify_state.json', process.env.SPOTIFY_AUTH_JSON);
+            console.log('Sesión restaurada:', fs.statSync('E2ETest/auth/spotify_state.json').size, 'bytes');
+          "
+
+      - name: Ejecutar tests E2E Playlist
+        run: npx playwright test --project=playlist
+
+      - name: Ejecutar tests E2E Búsqueda
+        run: npx playwright test --project=busqueda
+
+      - name: Subir reporte Playwright
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
