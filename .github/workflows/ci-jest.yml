@@ -27,6 +27,6 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      # Solo corre los archivos .test.js dentro de UnitTest/
+      # Jest 30: usa --testPathPatterns (plural) en lugar de --testPathPattern
       - name: Ejecutar tests unitarios
-        run: npx jest --testPathPattern="UnitTest" --testTimeout=10000
+        run: npx jest --testPathPatterns="UnitTest"
