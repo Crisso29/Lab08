@@ -1,5 +1,5 @@
 # .github/workflows/ci-jest.yml
-# Pipeline 1: ejecuta SOLO los tests unitarios de Jest en cada Push a main
+# Pipeline 1: tests unitarios + Quality Gate de cobertura
 
 name: CI — Tests Unitarios Jest
 
@@ -27,6 +27,16 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      # Jest 30: usa --testPathPatterns (plural) en lugar de --testPathPattern
-      - name: Ejecutar tests unitarios
-        run: npx jest --testPathPatterns="UnitTest"
+      # Quality Gate: falla si la cobertura baja de los umbrales definidos
+      # en package.json (statements 90%, branches 85%, functions 100%, lines 95%)
+      - name: Ejecutar tests unitarios con Quality Gate
+        run: npx jest --testPathPatterns="UnitTest" --coverage
+
+      # Subir el reporte de cobertura como artefacto descargable
+      - name: Subir reporte de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7

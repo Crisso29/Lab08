@@ -24,3 +24,22 @@ describe("TC-001: Creación exitosa de playlist con datos válidos (PEV)", () =>
     expect(resultado.playlist.descripcion).toBe(descripcion);
   });
 });
+
+// ─── Test adicional para cobertura — línea 44 de playlist.js ───
+describe("TC-001b: Creación rechazada cuando descripción supera 300 caracteres (PEI)", () => {
+  test("debe retornar error cuando la descripción supera los 300 caracteres en crearPlaylist", () => {
+    // Arrange
+    const nombre = "Playlist válida";
+    const descripcion301 =
+      "Seleccion especial de huaynos, musica andina y folklore tradicional del departamento de Ayacucho, Peru. " +
+      "Esta playlist incluye artistas y agrupaciones representativas de las provincias de Huamanga, Cangallo, " +
+      "Vilcashuaman, Vinchos y Victor Fajardo. Para escuchar personalmente y en familia. Comparte y disfruta!!!";
+
+    // Act
+    const resultado = crearPlaylist(nombre, descripcion301);
+
+    // Assert
+    expect(resultado.exito).toBe(false);
+    expect(resultado.error).toMatch(/descripci[oó]n/i);
+  });
+});

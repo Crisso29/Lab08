@@ -29,3 +29,37 @@ describe("TC-002: Edición exitosa de nombre y descripción de playlist existent
     expect(resultado.playlist.descripcion).toBe(nuevaDescripcion);
   });
 });
+
+// ─── Test adicional para cobertura — línea 73 de playlist.js ───
+describe("TC-002b: Edición rechazada con nombre vacío en editarPlaylist (Edge Case)", () => {
+  test("debe retornar error cuando el nuevo nombre está vacío", () => {
+    // Arrange
+    const playlistExistente = { id: "pl-001", nombre: "Original", descripcion: "" };
+    const nombreVacio = "";
+
+    // Act
+    const resultado = editarPlaylist(playlistExistente, nombreVacio);
+
+    // Assert
+    expect(resultado.exito).toBe(false);
+    expect(resultado.error).toMatch(/nombre/i);
+  });
+});
+
+// ─── Test adicional para cobertura — línea 81 de playlist.js ───
+describe("TC-002c: Edición rechazada con nombre > 100 caracteres en editarPlaylist (AVL N+1)", () => {
+  test("debe retornar error cuando el nuevo nombre supera los 100 caracteres", () => {
+    // Arrange
+    const playlistExistente = { id: "pl-001", nombre: "Original", descripcion: "" };
+    const nombre101 =
+      "Musica Andina Peruana Tradicional de la Region de Ayacucho Para Escuchar y Disfrutar ABCDEFGHAIJKLMNO";
+
+    // Act
+    const resultado = editarPlaylist(playlistExistente, nombre101);
+
+    // Assert
+    expect(nombre101.length).toBeGreaterThan(100);
+    expect(resultado.exito).toBe(false);
+    expect(resultado.error).toMatch(/nombre/i);
+  });
+});

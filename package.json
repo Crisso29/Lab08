@@ -35,7 +35,15 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/E2ETest/"
-    ]
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 90,
+        "branches": 85,
+        "functions": 100,
+        "lines": 95
+      }
+    }
   }
 }
 
