@@ -6,7 +6,7 @@
 **Semestre:** 2026-I  
 
 ---
-
+[Informe monográfico completo](https://docs.google.com/document/d/19gNATomIo4GUQjpCRedExc5zItGn3hN6/edit?usp=drive_link&ouid=102948391865322967982&rtpof=true&sd=true)
 ## 📋 Descripción general
 
 Este laboratorio implementa un pipeline de Integración Continua y Entrega Continua (CI/CD) utilizando GitHub Actions sobre el repositorio del curso. El objetivo es automatizar la ejecución de las suites de pruebas cada vez que el equipo introduce cambios en el código, garantizando que ningún defecto llegue a la rama principal sin haber pasado por una verificación automática.
