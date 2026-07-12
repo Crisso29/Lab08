@@ -1,0 +1,42 @@
+# .github/workflows/sonarcloud.yml
+# Pipeline 3: análisis estático con SonarCloud en cada Push y PR
+
+name: CI — Análisis SonarCloud
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sonarcloud:
+    name: Análisis SonarCloud
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Descargar código
+        uses: actions/checkout@v4
+        with:
+          # Necesario para que SonarCloud analice el historial de cambios
+          fetch-depth: 0
+
+      - name: Instalar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        run: npm install
+
+      # Generar el reporte de cobertura que SonarCloud necesita
+      - name: Generar reporte de cobertura
+        run: npx jest --testPathPatterns="UnitTest" --coverage --coverageReporters=lcov
+
+      # Ejecutar el análisis estático de SonarCloud
+      - name: Análisis SonarCloud
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
