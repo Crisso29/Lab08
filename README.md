@@ -1218,3 +1218,272 @@ git push origin main
 - [SonarCloud Documentation](https://docs.sonarsource.com/sonarcloud/)
 - [SonarCloud — GitHub Actions Integration](https://github.com/SonarSource/sonarcloud-github-action)
 - [Guía 09 — IS-489 UNSCH 2026-I](https://github.com/Crisso29/Lab08)
+
+---
+
+# LAB 10 — Pruebas de Rendimiento y Carga con k6
+
+**Asignatura:** IS-489 Pruebas y Aseguramiento de Calidad de Software  
+**Docente:** Ing. Lizbeth Jaico Quispe  
+**Autor:** Crisologo Aguilar Flores  
+**Semestre:** 2026-I  
+
+> **Continuación del Lab 08 y Lab 09.** Este laboratorio agrega pruebas de rendimiento al repositorio existente. Los Labs 05-09 verificaron que el sistema funciona correctamente con **1 usuario**. El Lab 10 verifica que sigue funcionando bien con **múltiples usuarios simultáneos**.
+
+---
+[Informe completo aquí:](https://docs.google.com/document/d/1PjKE3bJTj-K2tnCMXXG9f2kY8b4eN2Aw/edit?usp=drive_link&ouid=102948391865322967982&rtpof=true&sd=true)
+---
+
+## 📋 ¿Qué agrega el Lab 10?
+
+| Componente | Estado |
+|---|---|
+| Tests unitarios Jest (Lab 05) | ✅ Sin cambios |
+| Tests E2E Playwright (Lab 07) | ✅ Sin cambios |
+| Quality Gate + SonarCloud (Lab 09) | ✅ Sin cambios |
+| **Load Test k6** (carga normal) | ✅ **NUEVO** |
+| **Stress Test k6** (carga creciente) | ✅ **NUEVO** |
+| **Spike Test k6** (pico repentino) | ✅ **NUEVO** |
+| **Reporte HTML** de rendimiento | ✅ **NUEVO** |
+
+---
+
+## 📁 Archivos nuevos en este lab
+
+```
+LAB08/
+├── tests/
+│   └── performance/
+│       ├── config.js          ← URL base y headers compartidos
+│       ├── load-test.js       ← Caso Práctico 1: 3 VUs · 30s
+│       ├── stress-test.js     ← Caso Práctico 2: 0→30 VUs · 2min
+│       └── spike-test.js      ← Caso Práctico 3: 0→50 VUs · 50s
+└── docs/
+    └── lab10/
+        └── reporte-lab10.html ← Reporte interactivo de resultados
+```
+
+---
+
+## 🛠️ Instalación de k6
+
+```bash
+# Windows — con winget
+winget install k6.k6
+
+# Verificar instalación
+k6 version
+# k6 v2.0.0-rc1 (commit/fb943a6a80, go1.26.2, windows/amd64)
+```
+
+---
+
+## 🎵 Sistema bajo prueba
+
+### ¿Por qué MusicBrainz y no Spotify?
+
+El sistema de referencia original fue **Spotify Web API**. Sin embargo, desde 2024-2025 Spotify implementó restricciones que impiden las pruebas de carga:
+
+| Problema | Detalle |
+|---|---|
+| **Token expira en 1 hora** | En una prueba de 30s con 10 VUs el token puede expirar → 401 Unauthorized |
+| **Premium obligatorio** | Con Client Credentials sin Premium → `403: Active premium subscription required` |
+| **Política 2025** | Spotify restringió el acceso a la Web API a apps con Extended Quota Mode |
+
+**Solución:** Se usó **MusicBrainz API** (`musicbrainz.org/ws/2`), base de datos musical open source con funcionalidades equivalentes a Spotify:
+
+| Funcionalidad | Spotify | MusicBrainz |
+|---|---|---|
+| Buscar artista | `GET /v1/search?type=artist` | `GET /artist?query=...` |
+| Buscar canción | `GET /v1/search?type=track` | `GET /recording?query=...` |
+| Buscar álbum | `GET /v1/search?type=album` | `GET /release?query=...` |
+| Autenticación | OAuth2 + Premium | Solo User-Agent |
+| Rate limit | ~8.3 req/s | 1 req/s por IP |
+
+---
+
+## ⚙️ Configuración compartida
+
+```javascript
+// tests/performance/config.js
+export const BASE_URL = 'https://musicbrainz.org/ws/2';
+
+// MusicBrainz requiere un User-Agent descriptivo — sin esto devuelve 403
+export const HEADERS = {
+  'User-Agent': 'LAB10-IS489-UNSCH/1.0 (crisologo.aguilar.27@unsch.edu.pe)',
+  'Accept': 'application/json',
+};
+```
+
+---
+
+## 🧪 Caso Práctico 1 — Load Test
+
+**¿Qué simula?** La carga normal esperada en producción — usuarios utilizando el sistema en el día a día.
+
+```bash
+k6 run tests/performance/load-test.js
+```
+
+**Configuración:**
+```javascript
+export const options = {
+  vus: 3,          // 3 usuarios virtuales simultáneos
+  duration: '30s', // durante 30 segundos
+  thresholds: {
+    'http_req_duration': ['p(95)<2000'], // el 95% de peticiones < 2000ms
+    'http_req_failed':   ['rate<0.05'],  // menos del 5% de errores
+  },
+};
+```
+
+**Resultados obtenidos:**
+
+| Métrica | Resultado | Umbral | Estado |
+|---|---|---|---|
+| p95 duración | 1.26s | < 2000ms | ✅ PASS |
+| Promedio | 344ms | — | — |
+| Máximo | 1.64s | — | — |
+| % errores | 4.76% | < 5% | ✅ PASS |
+| Total peticiones | 42 | — | — |
+| **Threshold general** | — | — | **✅ PASS** |
+
+---
+
+## 🔥 Caso Práctico 2 — Stress Test
+
+**¿Qué simula?** Aumento gradual de carga hasta encontrar el punto de degradación del sistema.
+
+```bash
+k6 run tests/performance/stress-test.js
+```
+
+**Configuración:**
+```javascript
+export const options = {
+  stages: [
+    { duration: '30s', target: 10 }, // Etapa 1: subir a 10 VUs
+    { duration: '30s', target: 20 }, // Etapa 2: subir a 20 VUs
+    { duration: '30s', target: 30 }, // Etapa 3: subir a 30 VUs
+    { duration: '30s', target: 0  }, // Etapa 4: enfriamiento
+  ],
+  thresholds: {
+    'http_req_duration': ['p(95)<3000'],
+    'http_req_failed':   ['rate<0.10'],
+  },
+};
+```
+
+**Resultados obtenidos:**
+
+| Métrica | Resultado | Umbral | Estado |
+|---|---|---|---|
+| p95 duración | 209ms | < 3000ms | ✅ PASS |
+| Promedio | 201ms | — | — |
+| Máximo | 960ms | — | — |
+| % errores | 84.13% | < 10% | ❌ FAIL |
+| Total peticiones | 1,488 | — | — |
+| **Threshold general** | — | — | **❌ FAIL** |
+
+> ⚠️ **Hallazgo:** El punto de degradación ocurre entre 3 y 10 VUs. MusicBrainz rechaza peticiones con 429 cuando se supera su rate limit de 1 req/s — el servidor responde rápido (209ms) pero con error.
+
+---
+
+## ⚡ Caso Práctico 3 — Spike Test
+
+**¿Qué simula?** Un pico repentino masivo — como el lanzamiento de un álbum o una campaña viral.
+
+```bash
+k6 run tests/performance/spike-test.js
+```
+
+**Configuración:**
+```javascript
+export const options = {
+  stages: [
+    { duration: '10s', target: 0  }, // sin carga
+    { duration: '10s', target: 50 }, // PICO: 0 → 50 VUs en 10s
+    { duration: '20s', target: 50 }, // mantener el pico
+    { duration: '10s', target: 0  }, // recuperación
+  ],
+  thresholds: {
+    'http_req_duration': ['p(95)<5000'],
+    'http_req_failed':   ['rate<0.20'],
+  },
+};
+```
+
+**Resultados obtenidos:**
+
+| Métrica | Resultado | Umbral | Estado |
+|---|---|---|---|
+| p95 duración | 209ms | < 5000ms | ✅ PASS |
+| Promedio | 214ms | — | — |
+| Máximo | 1.69s | — | — |
+| % errores | 92.16% | < 20% | ❌ FAIL |
+| Total peticiones | 1,250 | — | — |
+| Checks exitosos | 100% | — | ✅ |
+| **Threshold general** | — | — | **❌ FAIL** |
+
+> ✅ **Dato positivo:** 100% de checks exitosos — el servidor siempre respondió de forma controlada, nunca hubo timeouts ni crashes. Solo rechazos ordenados por rate limiting (graceful degradation).
+
+---
+
+## 📊 Tabla comparativa completa
+
+| Métrica | Load Test (3 VUs) | Stress Test (30 VUs) | Spike Test (50 VUs) |
+|---|---|---|---|
+| p95 duración | 1.26s ✅ | 209ms ✅ | 209ms ✅ |
+| Promedio | 344ms | 201ms | 214ms |
+| Máximo | 1.64s | 960ms | 1.69s |
+| % errores | 4.76% ✅ | 84.13% ❌ | 92.16% ❌ |
+| Total peticiones | 42 | 1,488 | 1,250 |
+| Throughput | 1.19 req/s | 12.33 req/s | 24.83 req/s |
+| **Resultado** | **✅ PASS** | **❌ FAIL** | **❌ FAIL** |
+
+---
+
+## 🎵 Valores teóricos de Spotify (basados en fuentes publicadas)
+
+Según la documentación oficial de Spotify (2024) y estudios de desarrolladores, estos serían los valores esperados si se pudiera probar Spotify directamente:
+
+| Métrica | Load Test | Stress Test | Spike Test |
+|---|---|---|---|
+| p95 duración | ~150ms | ~200ms | ~300ms |
+| % errores | ~0% | ~30-60% | ~80-90% |
+| Rate limit | 250 req/30s (~8.3 req/s) | Igual | Igual |
+| **Resultado** | **✅ PASS** | **❌ FAIL** | **❌ FAIL** |
+
+**¿Por qué Spotify sería más rápido?** Spotify opera sobre infraestructura global CDN con servidores en múltiples regiones. MusicBrainz es una organización sin fines de lucro con infraestructura más modesta. El patrón de degradación bajo carga concurrente es análogo en ambas APIs: buena latencia, pero rate limiting que rechaza peticiones cuando se supera la capacidad permitida.
+
+---
+
+## 🧪 Referencia rápida de comandos
+
+```bash
+# Caso Práctico 1: Load Test (30 segundos)
+k6 run tests/performance/load-test.js
+
+# Caso Práctico 2: Stress Test (2 minutos)
+k6 run tests/performance/stress-test.js
+
+# Caso Práctico 3: Spike Test (50 segundos)
+k6 run tests/performance/spike-test.js
+
+# Test rápido de diagnóstico (1 VU, 5 segundos)
+k6 run --vus 1 --duration 5s tests/performance/load-test.js
+
+# Ver el reporte HTML de resultados
+# Arrastra al navegador:
+docs/lab10/reporte-lab10.html
+```
+
+---
+
+## 🔗 Referencias
+
+- [k6 Documentation](https://k6.io/docs/)
+- [MusicBrainz API Documentation](https://musicbrainz.org/doc/MusicBrainz_API)
+- [Spotify Web API — Rate Limits](https://developer.spotify.com/documentation/web-api/concepts/rate-limits)
+- [State of Spotify Web API Report 2025 — Lee Martin](https://spotify.leemartin.com/)
+- [Guía 10 — IS-489 UNSCH 2026-I](https://github.com/Crisso29/Lab08)
